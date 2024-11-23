@@ -90,39 +90,52 @@ class BorrowController extends Controller
     public function update(Request $request, Borrow $borrow)
     {
         $startTime = microtime(true);
-
+    
         $request->validate([
             'member_id' => 'required|exists:members,id',
             'book_id' => 'required|exists:books,id',
             'return_date' => 'nullable|date',
             'status' => 'required|in:OnGoing,OnTime,Late',
         ]);
-
+    
+        // Handle change in book_id
         if ($request->book_id != $borrow->book_id) {
+            // Set the old book's status to Available
             $oldBook = $borrow->book;
             $oldBook->update(['status' => 'Available']);
-
+    
+            // Set the new book's status to Borrowed
             $newBook = Book::findOrFail($request->book_id);
             $newBook->update(['status' => 'Borrowed']);
         }
-
+    
+        // Handle status change
         if ($request->status === 'OnGoing') {
+            // Ensure no conflicts for OnGoing status
             $existingBorrow = Borrow::where('book_id', $request->book_id)
                 ->where('status', 'OnGoing')
                 ->where('id', '!=', $borrow->id)
                 ->first();
-
+    
             if ($existingBorrow) {
                 return redirect()->back()->withErrors(['book_id' => 'This book is already marked as OnGoing for another borrow record.']);
             }
-
+    
+            // Update book status to Borrowed if marked as OnGoing
+            $borrow->book->update(['status' => 'Borrowed']);
+    
+            // Clear the return_date
             $request->merge(['return_date' => null]);
+        } elseif ($borrow->status === 'OnGoing' && $request->status !== 'OnGoing') {
+            // If the status changes from OnGoing to OnTime or Late, set the book's status to Available
+            $borrow->book->update(['status' => 'Available']);
         }
-
+    
+        // Update the borrow record
         $borrow->update($request->all());
-
+    
         $executionTime = microtime(true) - $startTime;
-
+    
         return redirect()->route('borrows.index')
             ->with('success', 'Borrow record updated successfully. (Execution time: ' . number_format($executionTime, 4) . ' seconds)');
     }
