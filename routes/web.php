@@ -8,9 +8,7 @@ use App\Http\Controllers\BorrowController;
 use App\Http\Middleware\ExecutionTimeMiddleware;
 
 
-Route::middleware([ExecutionTimeMiddleware::class])->group(function () {
-    Route::resource('members', MemberController::class);
-    Route::resource('books', BookController::class);
-    Route::resource('borrows', BorrowController::class);
-    Route::resource('categories', CategoryController::class);
-});
+Route::resource('members', MemberController::class);
+Route::resource('books', BookController::class);
+Route::resource('borrows', BorrowController::class);
+Route::resource('categories', CategoryController::class);
